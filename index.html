@@ -1,0 +1,1082 @@
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>词根词缀学习助手 — Chrome 划词查词、词源树与同根词</title>
+  <meta name="description" content="面向中文用户的 Chrome 划词扩展：选中英文单词，侧边栏查看词根词缀拆词、词源树与同根词。适合备考与读英文网页。免费安装。" />
+  <meta property="og:title" content="词根词缀学习助手 — Chrome 划词查词、词源树与同根词" />
+  <meta property="og:description" content="面向中文用户的 Chrome 划词扩展：选中英文单词，侧边栏查看词根词缀拆词、词源树与同根词。适合备考与读英文网页。免费安装。" />
+  <meta property="og:type" content="website" />
+  <style>
+    /* ============================================================
+       词根词缀学习助手 · 落地页
+       视觉方向：现代中性底 + 青绿 accent；产品 UI 示意图独立 token
+       ============================================================ */
+    :root {
+      --bg:      oklch(98% 0.004 240);
+      --surface: oklch(100% 0 0);
+      --fg:      oklch(20% 0.02 240);
+      --muted:   oklch(50% 0.018 240);
+      --border:  oklch(90% 0.006 240);
+      --accent:  oklch(56% 0.12 170);
+      --accent-hover: oklch(48% 0.12 170);
+      --root-highlight: oklch(72% 0.08 170);
+      --surface-2: oklch(97% 0.006 240);
+      --success: oklch(52% 0.12 145);
+      --select-dot: #c5221f;
+
+      --font-display: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+      --font-body:    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;
+      --font-mono:    ui-monospace, 'SF Mono', Menlo, monospace;
+
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 2px oklch(0% 0 0 / 0.04), 0 8px 32px oklch(0% 0 0 / 0.06);
+      --max-w: 1120px;
+      --nav-h: 64px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { width: min(var(--max-w), 100% - 2rem); margin-inline: auto; }
+
+    /* —— 导航 —— */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--nav-h);
+      background: color-mix(in oklch, var(--surface) 88%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 100%;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 15px; color: var(--fg); text-decoration: none;
+    }
+    .logo:hover { text-decoration: none; }
+    .logo-img {
+      width: 32px; height: 32px; flex-shrink: 0;
+      border-radius: 8px; display: block;
+    }
+    .nav-links { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); font-size: 14px; text-decoration: none; }
+    .nav-links a:hover { color: var(--fg); }
+
+    /* —— 按钮 —— */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 22px; border-radius: 999px;
+      font-size: 15px; font-weight: 600; border: none; cursor: pointer;
+      text-decoration: none; transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); text-decoration: none; color: #fff; }
+    .btn-ghost {
+      background: transparent; color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface-2); text-decoration: none; color: var(--fg); }
+    .btn-sm { padding: 8px 16px; font-size: 13px; }
+    .btn-icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* —— Hero —— */
+    .hero {
+      padding: clamp(3rem, 8vw, 5.5rem) 0 clamp(3rem, 6vw, 4rem);
+      background: linear-gradient(165deg, var(--surface) 0%, var(--bg) 55%, var(--surface-2) 100%);
+    }
+    .hero-grid {
+      display: grid; gap: 3rem; align-items: center;
+    }
+    @media (min-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr 1.05fr; gap: 4rem; }
+    }
+    .hero-kicker {
+      display: inline-flex; align-items: center; gap: 6px;
+      font: 12px/1 var(--font-mono); letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--accent);
+      background: color-mix(in oklch, var(--accent) 10%, transparent);
+      padding: 6px 12px; border-radius: 999px; margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.025em; margin-bottom: 0.5rem;
+    }
+    .hero-slogan {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--accent); font-weight: 600;
+      margin-bottom: 1.25rem;
+    }
+    .hero-lead {
+      font-size: clamp(1rem, 1.8vw, 1.125rem);
+      color: var(--muted); max-width: 52ch; margin-bottom: 2rem;
+    }
+    .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 1rem; }
+    .hero-cta-note { font-size: 13px; color: var(--muted); }
+
+    /* —— 产品 UI 示意图（聚焦组件，非完整侧栏） —— */
+    .ui-surface {
+      --ui-bg: #f1f3f4;
+      --ui-surface: #fff;
+      --ui-surface-2: #f8f9fa;
+      --ui-border: #e8eaed;
+      --ui-text: #202124;
+      --ui-muted: #5f6368;
+      --ui-accent: #1a56db;
+      --ui-accent-bg: #e8f0fe;
+      --ui-line: rgba(120, 120, 120, 0.45);
+      --ui-node-border: #dadce0;
+      --ui-active-bg: #e8f0fe;
+      --ui-active-border: #1a56db;
+      font-family: system-ui, "PingFang SC", "Noto Sans SC", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ui-text);
+      background: var(--ui-surface);
+      border-radius: 10px;
+      border: 1px solid var(--ui-border);
+      box-sizing: border-box;
+    }
+    .ui-surface * { box-sizing: border-box; }
+
+    .ui-tabs {
+      display: flex; gap: 4px; padding: 8px 10px 0;
+      background: var(--ui-bg); border-bottom: 1px solid var(--ui-border);
+    }
+    .ui-tab {
+      flex: 1; padding: 8px 4px; border: none; border-radius: 8px 8px 0 0;
+      background: transparent; color: var(--ui-muted); font: inherit; font-size: 12px;
+      cursor: default;
+    }
+    .ui-tab.is-active { background: var(--ui-accent-bg); color: var(--ui-accent); font-weight: 600; }
+
+    .ui-search {
+      display: flex; gap: 6px; padding: 8px 10px;
+      background: var(--ui-bg); border-bottom: 1px solid var(--ui-border);
+    }
+    .ui-search input {
+      flex: 1; padding: 7px 10px; border: 1px solid var(--ui-border);
+      border-radius: 8px; font: inherit; font-size: 13px; background: var(--ui-surface);
+    }
+
+    .ui-word-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--ui-border); }
+    .ui-word-head h4 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+    .ui-word-head .phonetic { font-size: 12px; color: var(--ui-muted); margin-bottom: 4px; }
+    .ui-word-head .gloss { font-size: 13px; margin: 0; }
+
+    .ui-section-head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 8px;
+    }
+    .ui-section-head h5 { margin: 0; font-size: 15px; font-weight: 600; }
+    .ui-formula { font-size: 12px; color: var(--ui-muted); }
+
+    /* 词源树 */
+    .ui-tree-wrap { padding: 0 10px 14px; overflow-x: auto; }
+    .ui-tree-wrap--wide { min-width: 0; }
+    .ui-tree-canvas {
+      position: relative; width: 520px; height: 172px; margin: 0 auto;
+    }
+    .ui-tree-canvas--mini { width: 220px; height: 120px; transform: scale(0.92); transform-origin: top left; }
+    .ui-tree-canvas svg {
+      position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+    }
+    .ui-tree-canvas svg path, .ui-tree-canvas svg line {
+      fill: none; stroke: var(--ui-line); stroke-width: 1.5;
+    }
+    .ui-node {
+      position: absolute; display: inline-flex; align-items: center;
+      padding: 4px 8px; border-radius: 6px;
+      border: 1px solid var(--ui-node-border); background: #fff;
+      font-size: 12px; font-weight: 500; white-space: nowrap;
+    }
+    .ui-node--word { font-size: 13px; font-weight: 600; background: rgba(0,0,0,0.06); }
+    .ui-node.is-active {
+      background: var(--ui-active-bg); border-color: var(--ui-active-border); color: var(--ui-accent);
+    }
+
+    /* 语素详情卡 */
+    .ui-morph {
+      padding: 14px; max-width: 360px; margin-inline: auto;
+    }
+    .ui-morph-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .ui-morph-head h4 { margin: 0; font-size: 16px; font-weight: 600; }
+    .ui-badge {
+      font-size: 10px; padding: 2px 6px; border-radius: 4px;
+      background: var(--ui-accent-bg); color: var(--ui-accent);
+    }
+    .ui-morph-meanings { margin: 0 0 10px; font-size: 13px; line-height: 1.55; }
+    .ui-morph-list { margin: 0; padding-left: 1.2em; font-size: 12px; color: var(--ui-muted); line-height: 1.6; }
+    .ui-morph-origin { margin-top: 10px; font-size: 12px; color: var(--ui-muted); }
+
+    /* 同根词网格 */
+    .ui-cognates { padding: 12px 14px 14px; }
+    .ui-cognates-hint { margin: 0 0 8px; font-size: 12px; color: var(--ui-muted); }
+    .ui-cognates-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5em, 1fr));
+      gap: 4px 12px; margin: 0; padding: 0; list-style: none;
+    }
+    .ui-cognates-grid li {
+      font-size: 13px; color: var(--ui-accent); overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* 历史 / 单词本列表 */
+    .ui-list-panel { padding: 10px 12px 12px; background: var(--ui-bg); }
+    .ui-list-group-label {
+      font-size: 11px; font-weight: 600; color: var(--ui-muted);
+      margin: 0 0 6px; padding: 2px 0;
+    }
+    .ui-list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; margin-bottom: 4px;
+      background: var(--ui-surface-2); border: 1px solid var(--ui-border);
+      border-radius: 8px; font-size: 13px;
+    }
+    .ui-list-item__word { font-weight: 600; }
+    .ui-list-item__meta { font-size: 11px; color: var(--ui-muted); }
+
+    .illus-caption {
+      text-align: center; font: 11px/1.4 var(--font-mono);
+      color: var(--muted); margin-top: 10px; letter-spacing: 0.02em;
+    }
+    /* —— 截图占位编号（待替换真实截图） —— */
+    .shot-slot { position: relative; margin-inline: auto; }
+    .shot-code {
+      position: absolute; top: 8px; left: 8px; z-index: 20;
+      display: grid; place-items: center;
+      min-width: 28px; height: 22px; padding: 0 6px;
+      border-radius: 4px;
+      background: oklch(15% 0.02 240 / 0.9);
+      color: #fff; font: 11px/1 var(--font-mono); font-weight: 700;
+      letter-spacing: 0.06em; pointer-events: none;
+      box-shadow: 0 1px 4px oklch(0% 0 0 / 0.25);
+    }
+    .shot-caption {
+      text-align: center; font: 11px/1.4 var(--font-mono);
+      color: var(--muted); margin-top: 8px; letter-spacing: 0.02em;
+    }
+    .shot-slot--inset .shot-code { top: 6px; left: 6px; }
+    .feat-visual.shot-slot { width: 100%; }
+    .shot-09 .ui-cognates { width: 100%; min-width: 0; }
+    .shot-img {
+      width: 100%; height: auto; display: block;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .shot-slot--inset .shot-img { border-radius: 6px; box-shadow: none; }
+    /* 01 · 裁切顶部黑边 + 较小圆角 */
+    .shot-crop-top {
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      line-height: 0;
+      aspect-ratio: 2940 / 1846;
+    }
+    .shot-crop-top .shot-img {
+      width: 100%;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      background: transparent;
+      transform: translateY(calc(-66 / 1912 * 100%));
+    }
+    /* 02 · 解决方案区词源树 */
+    .shot-02.illus-wide { max-width: 480px; margin-inline: auto; }
+    .shot-02-crop {
+      overflow: hidden;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      line-height: 0;
+      background: #f8f9fa;
+    }
+    .shot-02-crop .shot-img {
+      width: 100%;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      background: #f8f9fa;
+    }
+    /* 04 · 场景示意放大 */
+    .scene-card:has(.shot-04) .scene-visual { height: 200px; }
+    .scene-illus.shot-04 {
+      padding: 12px 14px;
+      background: var(--surface);
+      min-height: 168px;
+    }
+    .shot-04 .wiki-page {
+      padding: 14px 16px !important;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .shot-04 .wiki-sel { font-size: 14px; }
+    .shot-04 .wiki-dot {
+      width: 18px; height: 18px; font-size: 10px;
+    }
+    /* 03 · 底色与截图一致 */
+    .scene-illus.shot-03 {
+      background: #f8f9fa;
+      border-color: #eef0f2;
+      padding: 0;
+    }
+    .shot-03 .shot-img {
+      background: #f8f9fa;
+      border: none;
+      box-shadow: none;
+      border-radius: 6px;
+    }
+    /* 08 · 缩小展示 + 底色匹配 */
+    .feat-visual.shot-08 {
+      background: #f8f9fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 14px !important;
+      border-radius: var(--radius-sm);
+      border-color: #eef0f2;
+      box-shadow: none;
+    }
+    .feat-visual.shot-08 .shot-img {
+      width: 92%;
+      max-width: 400px;
+      margin-inline: auto;
+      background: #f8f9fa;
+      border: none;
+      box-shadow: none;
+    }
+    .shot-12 .shot-img {
+      max-height: min(480px, 65vh);
+      object-fit: contain;
+      object-position: top center;
+      background: #f8f9fa;
+    }
+    .feat-mini-panel .shot-img {
+      max-height: 200px;
+      object-fit: cover;
+      object-position: top center;
+    }
+    .scene-illus .shot-img {
+      max-height: 160px;
+      object-fit: contain;
+      object-position: center;
+    }
+    .illus-slot { position: relative; margin-inline: auto; }
+    .illus-wide { width: 100%; max-width: 560px; }
+    .illus-hero-aside { width: 268px; flex-shrink: 0; overflow: hidden; }
+
+    .browser-frame {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .browser-chrome {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+    }
+    .browser-dots { display: flex; gap: 5px; }
+    .browser-dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+    .browser-dots i:nth-child(1) { background: #ff5f57; }
+    .browser-dots i:nth-child(2) { background: #febc2e; }
+    .browser-dots i:nth-child(3) { background: #28c840; }
+    .browser-url {
+      flex: 1; font: 10px/1 var(--font-mono); color: var(--muted);
+      background: var(--surface); padding: 4px 8px; border-radius: 5px;
+      border: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .browser-split {
+      display: grid; grid-template-columns: 1fr auto;
+      min-height: 420px;
+    }
+    .browser-split aside { border-left: 1px solid var(--border); background: var(--ui-bg); }
+    @media (max-width: 640px) {
+      .browser-split { grid-template-columns: 1fr; min-height: auto; }
+      .browser-split aside { border-left: none; border-top: 1px solid var(--border); width: 100% !important; }
+      .illus-hero-aside { width: 100%; max-width: 320px; margin-inline: auto; }
+    }
+    .wiki-page {
+      padding: 14px 16px; font-size: 11px; line-height: 1.65; color: var(--muted);
+      background: var(--surface);
+    }
+    .wiki-page h4 {
+      font-size: 13px; font-weight: 700; color: var(--fg);
+      margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    }
+    .wiki-sel {
+      background: color-mix(in oklch, var(--accent) 12%, var(--surface));
+      color: var(--fg); padding: 0 2px;
+      border-radius: 2px; position: relative; font-weight: 600;
+    }
+    .wiki-dot {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; margin-left: 2px; vertical-align: middle;
+      background: var(--select-dot); color: #fff; border-radius: 50%;
+      font-size: 8px; font-weight: 800; line-height: 1;
+      box-shadow: 0 0 0 2px var(--surface);
+    }
+    .scene-illus {
+      width: 100%; height: 100%; border-radius: var(--radius-sm);
+      overflow: hidden; border: 1px solid var(--border);
+      display: grid; place-items: center; background: var(--surface-2); padding: 8px;
+    }
+    .illus-page-only {
+      padding: 20px; background: var(--surface); border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .illus-page-only p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+    .feat-mini-panel { margin-top: 10px; border-radius: var(--radius-sm); overflow: hidden; }
+
+    /* —— 通用区块 —— */
+    section { padding: clamp(3rem, 7vw, 5rem) 0; }
+    section.alt { background: var(--surface-2); }
+    .section-label {
+      font: 12px/1 var(--font-mono); letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800; letter-spacing: -0.02em;
+      line-height: 1.2; margin-bottom: 1rem;
+    }
+    .section-lead { color: var(--muted); max-width: 60ch; margin-bottom: 2.5rem; font-size: 1.05rem; }
+
+    /* —— 痛点 —— */
+    .pain-grid { display: grid; gap: 1.25rem; }
+    @media (min-width: 640px) { .pain-grid { grid-template-columns: repeat(3, 1fr); } }
+    .pain-card {
+      padding: 1.5rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .pain-num {
+      font: 12px/1 var(--font-mono); color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .pain-card p { font-size: 15px; color: var(--muted); }
+
+    /* —— 场景 —— */
+    .scene-grid { display: grid; gap: 1.5rem; }
+    @media (min-width: 768px) { .scene-grid { grid-template-columns: repeat(3, 1fr); } }
+    .scene-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .scene-visual {
+      height: 160px; background: linear-gradient(160deg, var(--surface-2), var(--surface));
+      border-bottom: 1px solid var(--border);
+      display: grid; place-items: center; padding: 1rem;
+    }
+    .scene-mini {
+      width: 100%; max-width: 200px; height: 120px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px; font-size: 10px;
+    }
+    .scene-body { padding: 1.25rem; flex: 1; }
+    .scene-body h3 { font-size: 16px; font-weight: 700; margin-bottom: 0.5rem; }
+    .scene-body p { font-size: 14px; color: var(--muted); }
+
+    /* —— 功能 —— */
+    .feat-list { display: flex; flex-direction: column; gap: 3rem; }
+    .feat-row {
+      display: grid; gap: 2rem; align-items: center;
+    }
+    @media (min-width: 768px) {
+      .feat-row { grid-template-columns: 1fr 1fr; }
+      .feat-row.reverse .feat-copy { order: 2; }
+      .feat-row.reverse .feat-visual-wrap { order: 1; }
+    }
+    .feat-visual-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .feat-copy p { color: var(--muted); font-size: 15px; }
+    .feat-visual {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow);
+    }
+    .feat-grid-sm {
+      display: grid; gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      margin-top: 2rem;
+    }
+    .feat-card-sm {
+      padding: 1.25rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .feat-card-sm h4 { font-size: 15px; font-weight: 700; margin-bottom: 0.35rem; }
+    .feat-card-sm p { font-size: 13px; color: var(--muted); }
+
+    /* —— 差异对比 —— */
+    .diff-list { display: grid; gap: 1rem; max-width: 640px; }
+    .diff-item {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 1rem 0; border-bottom: 1px solid var(--border);
+    }
+    .diff-item:last-child { border-bottom: none; }
+    .diff-check {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      background: color-mix(in oklch, var(--accent) 15%, transparent);
+      color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 700;
+    }
+    .diff-item strong { display: block; font-size: 15px; margin-bottom: 2px; }
+    .diff-item span { font-size: 14px; color: var(--muted); }
+
+    /* —— 步骤 —— */
+    .steps { display: grid; gap: 1.5rem; }
+    @media (min-width: 640px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+    .step {
+      text-align: center; padding: 1.5rem 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      font-weight: 800; font-size: 18px;
+      display: grid; place-items: center; margin: 0 auto 1rem;
+    }
+    .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 0.5rem; }
+    .step p { font-size: 14px; color: var(--muted); }
+    .steps-note {
+      margin-top: 1.5rem; font-size: 13px; color: var(--muted);
+      text-align: center; max-width: 56ch; margin-inline: auto;
+    }
+
+    /* —— 示例词族 —— */
+    .example-box {
+      display: grid; gap: 2rem; align-items: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow);
+    }
+    @media (min-width: 768px) { .example-box { grid-template-columns: 1fr 1fr; } }
+    .word-chain { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; }
+    .word-chip {
+      padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      background: var(--surface-2); border: 1px solid var(--border);
+    }
+    .word-chip.highlight { background: color-mix(in oklch, var(--root-highlight) 20%, var(--surface)); border-color: color-mix(in oklch, var(--root-highlight) 40%, var(--border)); }
+
+    /* —— 视频 —— */
+    .video-wrap {
+      aspect-ratio: 16/9; border-radius: var(--radius);
+      overflow: hidden; border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .video-wrap iframe { width: 100%; height: 100%; border: 0; }
+
+    /* —— 隐私 —— */
+    .privacy-list { display: grid; gap: 1rem; max-width: 640px; }
+    .privacy-item {
+      display: flex; gap: 12px; font-size: 15px; color: var(--muted);
+    }
+    .privacy-item::before { content: '·'; color: var(--accent); font-weight: 800; flex-shrink: 0; }
+    .privacy-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
+    .privacy-links a { font-size: 14px; font-weight: 600; }
+
+    /* —— FAQ —— */
+    .faq-list { max-width: 720px; }
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-q {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      gap: 1rem; padding: 1.25rem 0; background: none; border: none;
+      font: inherit; font-size: 16px; font-weight: 600; color: var(--fg);
+      cursor: pointer; text-align: left;
+    }
+    .faq-q:hover { color: var(--accent); }
+    .faq-icon {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 1px solid var(--border); flex-shrink: 0;
+      display: grid; place-items: center; font-size: 16px; line-height: 1;
+      transition: transform 0.2s;
+    }
+    .faq-item.open .faq-icon { transform: rotate(45deg); background: var(--accent); color: #fff; border-color: var(--accent); }
+    .faq-a {
+      max-height: 0; overflow: hidden; transition: max-height 0.25s ease;
+    }
+    .faq-item.open .faq-a { max-height: 200px; }
+    .faq-a-inner { padding-bottom: 1.25rem; color: var(--muted); font-size: 15px; }
+
+    /* —— CTA —— */
+    .cta-band {
+      text-align: center; padding: clamp(3rem, 8vw, 5rem) 0;
+      background: linear-gradient(180deg, var(--surface-2), var(--bg));
+    }
+    .cta-band h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1.5rem;
+    }
+    .cta-band .hero-cta-note { margin-top: 1rem; }
+
+    /* —— Footer —— */
+    footer {
+      padding: 2rem 0; border-top: 1px solid var(--border);
+      font-size: 14px; color: var(--muted);
+    }
+    .footer-inner {
+      display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+      justify-content: space-between; align-items: center;
+    }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+    .footer-links a:hover { color: var(--fg); }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 导航 -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="#" class="logo">
+        <img class="logo-img" src="mq092pao-icon-128.svg" alt="" width="32" height="32" />
+        词根词缀学习助手
+      </a>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#steps">上手</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/liuhongjiang1987/ROOTS-legal-docs/issues" target="_blank" rel="noopener">反馈</a>
+      </div>
+      <a class="btn btn-primary btn-sm" href="https://chromewebstore.google.com/detail/%E8%AF%8D%E6%A0%B9%E8%AF%8D%E7%BC%80%E5%AD%A6%E4%B9%A0%E5%8A%A9%E6%89%8B/oeglfhdljbfbkdalfheedcmbacegfhpa?hl=zh-CN&utm_source=landing&utm_medium=web&utm_campaign=homepage" target="_blank" rel="noopener">
+        <img class="btn-icon" src="https://upload.wikimedia.org/wikipedia/commons/0/0c/Google_Chrome_Web_Store_icon_2022.svg" alt="" width="20" height="20" />
+        免费安装
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <div class="hero-kicker">Chrome 扩展 · 划词查词</div>
+        <h1>词根词缀学习助手</h1>
+        <p class="hero-slogan">划词见根，学词有脉</p>
+        <p class="hero-lead">浏览任何英文网页，选中单词即可在 Chrome 侧边栏查释义、看词根词缀如何组成单词，并通过词源树理解词汇来历。</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/%E8%AF%8D%E6%A0%B9%E8%AF%8D%E7%BC%80%E5%AD%A6%E4%B9%A0%E5%8A%A9%E6%89%8B/oeglfhdljbfbkdalfheedcmbacegfhpa?hl=zh-CN&utm_source=landing&utm_medium=web&utm_campaign=homepage" target="_blank" rel="noopener">
+            <img class="btn-icon" src="https://upload.wikimedia.org/wikipedia/commons/0/0c/Google_Chrome_Web_Store_icon_2022.svg" alt="" width="20" height="20" />
+            免费安装 Chrome 扩展
+          </a>
+          <a class="btn btn-ghost" href="#video">观看 60 秒演示</a>
+        </div>
+        <p class="hero-cta-note">Chrome 网上应用店 · 免费</p>
+      </div>
+      <div class="hero-visual">
+        <div class="shot-slot shot-01" style="max-width:580px;">
+          <div class="shot-crop-top">
+            <img class="shot-img" src="mq08i8gj-01.png" alt="划词查词：Wikipedia 页面选中 geographic，侧栏展示查词结果" width="2940" height="1912" loading="lazy" decoding="async" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 痛点 -->
+  <section class="alt" id="pain">
+    <div class="container">
+      <p class="section-label">为什么需要</p>
+      <h2 class="section-title">查词查了很多，为什么还是记不住？</h2>
+      <div class="pain-grid">
+        <div class="pain-card">
+          <div class="pain-num">01</div>
+          <p>传统划词工具大多只给中文翻译——查完关闭，单词还是陌生的。</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-num">02</div>
+          <p>背单词 App 和日常阅读是两套系统：阅读里遇到的生词，很难和词表里的条目连起来。</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-num">03</div>
+          <p>词根词缀「背了不会用」，是因为缺少在阅读场景里「看到结构」的机会。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 解决方案 -->
+  <section>
+    <div class="container">
+      <p class="section-label">解决方案</p>
+      <h2 class="section-title">在阅读里，把单词「拆开看清楚」</h2>
+      <p class="section-lead">词根词缀学习助手是一款 Chrome 划词扩展。你在英文网页上选中单词，侧栏立刻展示释义、音标、词源说明，以及前缀、词根、后缀的分层拆词。词源树把词汇的派生与语素关系可视化——点击节点，继续探索同根词。在真实阅读流里记单词，而不是孤立地背拼写。</p>
+      <div class="shot-slot shot-02 illus-wide">
+        <div class="shot-02-crop">
+          <img class="shot-img" src="mq09dhjl-02.png" alt="词源树：geographic 的派生与语素结构" width="896" height="816" loading="lazy" decoding="async" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 分人群场景 -->
+  <section class="alt" id="scenes">
+    <div class="container">
+      <p class="section-label">适用场景</p>
+      <h2 class="section-title">不同阅读目标，同一套查词方式</h2>
+      <div class="scene-grid">
+        <article class="scene-card">
+          <div class="scene-visual">
+            <div class="scene-illus shot-slot shot-03 shot-slot--inset">
+              <img class="shot-img" src="mq08i8gq-03.png" alt="同根词网格：graph- 词族" width="584" height="358" loading="lazy" decoding="async" />
+            </div>
+          </div>
+          <div class="scene-body">
+            <h3>备考阅读，一词串一串</h3>
+            <p>四六级、考研、雅思、托福、GRE——在读真题、外刊、论文时，用同根词把词汇连成网络，而不是孤立背列表。</p>
+          </div>
+        </article>
+        <article class="scene-card">
+          <div class="scene-visual">
+            <div class="scene-illus shot-slot shot-04 shot-slot--inset">
+              <div class="wiki-page">
+                <p>…The <span class="wiki-sel">deployment<span class="wiki-dot">R</span></span> pipeline runs nightly across all regions…</p>
+              </div>
+            </div>
+          </div>
+          <div class="scene-body">
+            <h3>职场英文，不打断思路</h3>
+            <p>读 NYT、BBC、技术文档、邮件时，侧栏划词即查，无需切换词典 App，保持阅读心流。</p>
+          </div>
+        </article>
+        <article class="scene-card">
+          <div class="scene-visual">
+            <div class="scene-illus shot-slot shot-05 shot-slot--inset">
+              <img class="shot-img" src="mq08i8gq-05.png" alt="词源树：geographic 派生结构" width="1004" height="438" loading="lazy" decoding="async" />
+            </div>
+          </div>
+          <div class="scene-body">
+            <h3>想「搞懂词从哪来」</h3>
+            <p>不满足于中文翻译，通过词源树和词源说明，理解 geographic、international 这类词为何这样构成。</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 核心功能 -->
+  <section id="features">
+    <div class="container">
+      <p class="section-label">核心功能</p>
+      <h2 class="section-title">从划词到词族，侧栏内一次完成</h2>
+      <div class="feat-list">
+        <article class="feat-row">
+          <div class="feat-copy">
+            <h3>划词查词</h3>
+            <p>在网页上选中英文单词，点击选区旁红点，侧栏打开查词结果。</p>
+          </div>
+          <div class="feat-visual-wrap">
+            <div class="feat-visual shot-slot shot-06" data-shot-w="502" data-shot-h="90">
+              <span class="shot-code" aria-hidden="true">06</span>
+              <div class="illus-page-only" role="img" aria-label="划词交互：选中单词后出现红点">
+                <p>…Researchers analyzed the <span class="wiki-sel">geographic<span class="wiki-dot">R</span></span> patterns in historical migration records before publishing their findings…</p>
+              </div>
+            </div>
+            <p class="shot-caption">06 · 502×90 · 划词 + 红点</p>
+          </div>
+        </article>
+        <article class="feat-row reverse">
+          <div class="feat-copy">
+            <h3>词根词缀分层拆词</h3>
+            <p>前缀、词根、后缀分卡片展示，含义与接合关系清晰可读。</p>
+          </div>
+          <div class="feat-visual-wrap">
+            <div class="feat-visual shot-slot shot-07" data-shot-w="330" data-shot-h="178">
+              <span class="shot-code" aria-hidden="true">07</span>
+              <div class="ui-surface ui-morph" role="img" aria-label="语素 graph 详情卡">
+                <div class="ui-morph-head">
+                  <h4>graph</h4>
+                  <span class="ui-badge">词根</span>
+                </div>
+                <p class="ui-morph-meanings">draw · write · produce image · descriptive science</p>
+                <ul class="ui-morph-list">
+                  <li>词首接合形：graph-、grapho-</li>
+                  <li>词中接合形：-graph-</li>
+                  <li>词尾接合形：-graph、-graphy</li>
+                </ul>
+                <p class="ui-morph-origin">Greek · γράφειν (gráphein)</p>
+              </div>
+            </div>
+            <p class="shot-caption">07 · 330×178 · graph 语素详情卡</p>
+          </div>
+        </article>
+        <article class="feat-row">
+          <div class="feat-copy">
+            <h3>词源树</h3>
+            <p>树形可视化派生与语素结构；点击节点深入探索。</p>
+          </div>
+          <div class="feat-visual-wrap">
+            <div class="feat-visual shot-slot shot-08">
+              <img class="shot-img" src="mq096rik-截屏2026-06-05-09.35.28.png" alt="词源树：点击节点探索派生结构" width="744" height="370" loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </article>
+        <article class="feat-row reverse">
+          <div class="feat-copy">
+            <h3>同根词</h3>
+            <p>展示与当前词语素或词根相关的词汇，便于串记。</p>
+          </div>
+          <div class="feat-visual-wrap">
+            <div class="feat-visual shot-slot shot-09" style="padding:0;" data-shot-w="502" data-shot-h="220">
+              <span class="shot-code" aria-hidden="true">09</span>
+              <div class="ui-surface ui-cognates" role="img" aria-label="graph- 同根词列表">
+                <p class="ui-cognates-hint">语素 graph- · 同根词</p>
+                <ul class="ui-cognates-grid">
+                  <li>autograph</li><li>biography</li><li>photograph</li><li>graphic</li>
+                  <li>graphite</li><li>telegraph</li><li>monograph</li><li>paragraph</li>
+                  <li>epigraphy</li><li>digraph</li><li>holography</li><li>orthography</li>
+                  <li>micrograph</li><li>polygraph</li><li>logographic</li><li>grapheme</li>
+                </ul>
+              </div>
+            </div>
+            <p class="shot-caption">09 · 502×220 · 同根词列表</p>
+          </div>
+        </article>
+      </div>
+      <div class="feat-grid-sm">
+        <div class="feat-card-sm">
+          <h4>查词历史</h4>
+          <p>自动保存查词记录；可按词基、词根或字母分组浏览复习。</p>
+          <div class="feat-mini-panel shot-slot shot-10 shot-slot--inset">
+            <img class="shot-img" src="mq08i8gq-10.png" alt="查词历史列表" width="1124" height="706" loading="lazy" decoding="async" />
+          </div>
+        </div>
+        <div class="feat-card-sm">
+          <h4>单词本</h4>
+          <p>重点词一键收藏，方便反复查看。</p>
+          <div class="feat-mini-panel shot-slot shot-11 shot-slot--inset">
+            <img class="shot-img" src="mq08i8gq-11.png" alt="单词本列表" width="1112" height="824" loading="lazy" decoding="async" />
+          </div>
+        </div>
+        <div class="feat-card-sm">
+          <h4>AI 语素补全</h4>
+          <p>词典未收录的语素可请求 AI 补充说明；内容标注「AI 生成」。</p>
+        </div>
+        <div class="feat-card-sm">
+          <h4>深色 / 浅色主题</h4>
+          <p>侧栏主题随网页明暗自动切换，夜间阅读更舒适。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 差异 -->
+  <section class="alt" id="diff">
+    <div class="container">
+      <p class="section-label">差异化</p>
+      <h2 class="section-title">和一般划词词典有什么不同？</h2>
+      <div class="diff-list">
+        <div class="diff-item">
+          <span class="diff-check">✓</span>
+          <div><strong>不只给翻译</strong><span>同时展示前缀、词根、后缀如何拼成单词，帮助理解结构而不死记字母。</span></div>
+        </div>
+        <div class="diff-item">
+          <span class="diff-check">✓</span>
+          <div><strong>词源树</strong><span>可视化词汇演变路径，把单词放进「词族」里理解。</span></div>
+        </div>
+        <div class="diff-item">
+          <span class="diff-check">✓</span>
+          <div><strong>同根词</strong><span>从一个词出发，发现 biography、graphic、photograph 等同源网络。</span></div>
+        </div>
+        <div class="diff-item">
+          <span class="diff-check">✓</span>
+          <div><strong>阅读不打断</strong><span>Chrome 侧边栏完成查词，无需切换 App 或新标签页。</span></div>
+        </div>
+        <div class="diff-item">
+          <span class="diff-check">✓</span>
+          <div><strong>可与翻译工具配合</strong><span>若你需要快速中英对照，可继续用有道、欧路等；我们专注词根与词源。</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 三步上手 -->
+  <section id="steps">
+    <div class="container">
+      <p class="section-label">快速上手</p>
+      <h2 class="section-title">三步开始在你的阅读里查词</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>安装并登录</h3>
+          <p>从 Chrome 网上应用店安装扩展，使用 Google 账号或邮箱验证码登录。</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>划词查词</h3>
+          <p>打开任意英文网页，选中单词，点击选区旁的红点。</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>探索与复习</h3>
+          <p>在侧栏查看拆词与词源树；点击工具栏图标浏览历史，或将重点词加入单词本。</p>
+        </div>
+      </div>
+      <p class="steps-note">查词与 AI 释义需联网，由云端 API 提供；登录后可同步历史与单词本。</p>
+    </div>
+  </section>
+
+  <!-- 示例词族 -->
+  <section class="alt" id="example">
+    <div class="container">
+      <p class="section-label">示例</p>
+      <h2 class="section-title">举个例子：graph 词族</h2>
+      <div class="example-box">
+        <div>
+          <p style="color:var(--muted);font-size:15px;line-height:1.7;">geo（地）+ graph（写/图）+ -y → geography（地理）+ -ic → geographic（地理的）。在侧栏打开 geographic，你可以同时看到拆词、词源树，以及 graph- 同根词列表——一个词触发一整片词汇网络。</p>
+          <div class="word-chain">
+            <span class="word-chip highlight">graph</span>
+            <span class="word-chip">→ geography</span>
+            <span class="word-chip">→ geographic</span>
+            <span class="word-chip">biography</span>
+            <span class="word-chip">photograph</span>
+          </div>
+        </div>
+        <div class="shot-slot shot-12">
+          <img class="shot-img" src="mq08utxf-12.png" alt="geographic 词源树与同根词" width="1188" height="1615" loading="lazy" decoding="async" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 交互体验 -->
+  <section>
+    <div class="container">
+      <p class="section-label">阅读心流</p>
+      <h2 class="section-title">强大功能，简便操作——不打断阅读心流</h2>
+      <p class="section-lead">选中、点击、侧栏展开——三步在原文旁完成查词与探索。无需复制单词、无需打开新标签、无需离开当前文章。先读英文，再在同一视线内看结构与词源，适合长时间沉浸式阅读。</p>
+    </div>
+  </section>
+
+  <!-- 演示视频 -->
+  <section class="alt" id="video">
+    <div class="container">
+      <p class="section-label">演示</p>
+      <h2 class="section-title">60 秒看懂划词 → 拆词 → 词源树</h2>
+      <div class="video-wrap">
+        <iframe src="https://www.youtube.com/embed/evGdKX8ho9I" title="词根词缀学习助手演示视频" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- 隐私 -->
+  <section id="privacy">
+    <div class="container">
+      <p class="section-label">信任</p>
+      <h2 class="section-title">隐私与说明</h2>
+      <div class="privacy-list">
+        <div class="privacy-item">仅在您主动查词时处理所选单词，不会监控您的全部浏览内容。</div>
+        <div class="privacy-item">查词需登录，用于账户与历史、单词本同步。</div>
+        <div class="privacy-item">AI 语素补全仅补充词典未覆盖的说明，带「AI 生成」标识，不替代权威拆词结果。</div>
+        <div class="privacy-item">基于 Chrome 扩展标准开发；Edge 等 Chromium 浏览器或可安装，请以实际测试为准。</div>
+      </div>
+      <div class="privacy-links">
+        <a href="https://liuhongjiang1987.github.io/ROOTS-legal-docs/privacy-policy.html" target="_blank" rel="noopener">隐私政策</a>
+        <a href="https://liuhongjiang1987.github.io/ROOTS-legal-docs/terms-and-conditions.html" target="_blank" rel="noopener">服务条款</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="alt" id="faq">
+    <div class="container">
+      <p class="section-label">FAQ</p>
+      <h2 class="section-title">常见问题</h2>
+      <div class="faq-list" role="list">
+        <div class="faq-item" role="listitem">
+          <button class="faq-q" type="button" aria-expanded="false">免费吗？<span class="faq-icon">+</span></button>
+          <div class="faq-a"><div class="faq-a-inner">扩展免费安装使用。查词需联网登录。</div></div>
+        </div>
+        <div class="faq-item" role="listitem">
+          <button class="faq-q" type="button" aria-expanded="false">必须登录吗？<span class="faq-icon">+</span></button>
+          <div class="faq-a"><div class="faq-a-inner">是的，用于账户与查词历史、单词本同步。</div></div>
+        </div>
+        <div class="faq-item" role="listitem">
+          <button class="faq-q" type="button" aria-expanded="false">和有道词典有什么区别？<span class="faq-icon">+</span></button>
+          <div class="faq-a"><div class="faq-a-inner">有道偏翻译与例句；本扩展专注词根词缀、词源树与同根词，适合系统理解构词。两者可配合使用。</div></div>
+        </div>
+        <div class="faq-item" role="listitem">
+          <button class="faq-q" type="button" aria-expanded="false">支持 Edge 吗？<span class="faq-icon">+</span></button>
+          <div class="faq-a"><div class="faq-a-inner">基于 Chrome 扩展（Manifest V3）开发，Edge 等 Chromium 浏览器或可安装，建议自行测试。</div></div>
+        </div>
+        <div class="faq-item" role="listitem">
+          <button class="faq-q" type="button" aria-expanded="false">每个词都能拆吗？<span class="faq-icon">+</span></button>
+          <div class="faq-a"><div class="faq-a-inner">并非每个英文词都有唯一、完备的词根分解；我们展示基于语言学资源的最佳结果，不伪造拆分。</div></div>
+        </div>
+        <div class="faq-item" role="listitem">
+          <button class="faq-q" type="button" aria-expanded="false">AI 内容可靠吗？<span class="faq-icon">+</span></button>
+          <div class="faq-a"><div class="faq-a-inner">AI 仅补充语素含义，明确标注「AI 生成」；拆词结构来自词典与形态库，不由 AI 生成。</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页尾 CTA -->
+  <section class="cta-band">
+    <div class="container">
+      <h2>开始在你的阅读里「见根知脉」</h2>
+      <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/%E8%AF%8D%E6%A0%B9%E8%AF%8D%E7%BC%80%E5%AD%A6%E4%B9%A0%E5%8A%A9%E6%89%8B/oeglfhdljbfbkdalfheedcmbacegfhpa?hl=zh-CN&utm_source=landing&utm_medium=web&utm_campaign=homepage" target="_blank" rel="noopener">
+        <img class="btn-icon" src="https://upload.wikimedia.org/wikipedia/commons/0/0c/Google_Chrome_Web_Store_icon_2022.svg" alt="" width="20" height="20" />
+        免费安装 Chrome 扩展
+      </a>
+      <p class="hero-cta-note">Chrome 网上应用店搜索「词根词缀学习助手」</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <span>© 2026 词根词缀学习助手</span>
+      <nav class="footer-links" aria-label="页脚链接">
+        <a href="https://chromewebstore.google.com/detail/%E8%AF%8D%E6%A0%B9%E8%AF%8D%E7%BC%80%E5%AD%A6%E4%B9%A0%E5%8A%A9%E6%89%8B/oeglfhdljbfbkdalfheedcmbacegfhpa?hl=zh-CN&utm_source=landing&utm_medium=web&utm_campaign=footer" target="_blank" rel="noopener">安装扩展</a>
+        <a href="https://liuhongjiang1987.github.io/ROOTS-legal-docs/privacy-policy.html" target="_blank" rel="noopener">隐私政策</a>
+        <a href="https://liuhongjiang1987.github.io/ROOTS-legal-docs/terms-and-conditions.html" target="_blank" rel="noopener">服务条款</a>
+        <a href="https://github.com/liuhongjiang1987/ROOTS-legal-docs/issues" target="_blank" rel="noopener">反馈与建议</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    /* FAQ 手风琴交互 */
+    document.querySelectorAll('.faq-q').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var item = btn.closest('.faq-item');
+        var isOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item').forEach(function (el) {
+          el.classList.remove('open');
+          el.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+        });
+        if (!isOpen) {
+          item.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
