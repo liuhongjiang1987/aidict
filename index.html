@@ -225,9 +225,21 @@
       font-size: 12px; font-weight: 500; white-space: nowrap;
     }
     .ui-node--word { font-size: 13px; font-weight: 600; background: rgba(0,0,0,0.06); }
+    .ui-node--suffix { border-style: dashed; }
     .ui-node.is-active {
       background: var(--ui-active-bg); border-color: var(--ui-active-border); color: var(--ui-accent);
     }
+    .ui-tree-toggle {
+      display: inline-grid; place-items: center;
+      width: 15px; height: 15px; margin-right: 4px; flex-shrink: 0;
+      border: 1px solid var(--ui-node-border); border-radius: 3px;
+      background: #fff; color: var(--ui-muted);
+      font: 600 11px/1 system-ui, sans-serif;
+    }
+    .ui-tree-canvas--feat {
+      position: relative; width: 100%; max-width: 400px; height: 180px; margin: 0 auto;
+    }
+    .ui-tree-panel { background: #fff; border: none; box-shadow: none; }
 
     /* 语素详情卡 */
     .ui-morph {
@@ -362,25 +374,15 @@
       box-shadow: none;
       border-radius: 6px;
     }
-    /* 08 · 缩小展示 + 底色匹配 */
+    /* 08 · 词源树示意（代码绘制） */
     .feat-visual.shot-08 {
-      background: #f8f9fa;
+      background: var(--surface);
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 14px !important;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      padding: 1.25rem !important;
     }
-    .feat-visual.shot-08 .shot-img {
-      width: 92%;
-      max-width: 321px;
-      margin-inline: auto;
-      background: #f8f9fa;
-      border: none;
-      box-shadow: none;
-    }
+    .feat-visual.shot-08 .ui-tree-wrap { padding: 0; width: 100%; }
     .shot-12 .shot-img {
       max-height: min(480px, 65vh);
       object-fit: contain;
@@ -846,7 +848,35 @@
           </div>
           <div class="feat-visual-wrap">
             <div class="feat-visual shot-slot shot-08">
-              <img class="shot-img" src="mq096rik-截屏2026-06-05-09.35.28.png" alt="词源树：点击节点探索派生结构" width="744" height="370" loading="lazy" decoding="async" />
+              <div class="ui-surface ui-tree-panel" role="img" aria-label="词源树：geographic 的派生与语素结构">
+                <div class="ui-tree-wrap">
+                  <div class="ui-tree-canvas ui-tree-canvas--feat">
+                    <svg viewBox="0 0 400 180" aria-hidden="true">
+                      <path d="M 96 82 H 102 V 28 H 108" />
+                      <path d="M 96 82 H 102 V 130 H 108" />
+                      <path d="M 188 28 H 204 V 14 H 218" />
+                      <path d="M 188 28 H 204 V 62 H 218" />
+                      <path d="M 188 28 H 204 V 110 H 218" />
+                      <path d="M 162 130 H 190 V 150 H 218" />
+                    </svg>
+                    <div class="ui-node ui-node--word" style="left:4px;top:68px">
+                      <span class="ui-tree-toggle" aria-hidden="true">−</span><span>geographic</span>
+                    </div>
+                    <div class="ui-node ui-node--word" style="left:108px;top:12px">
+                      <span class="ui-tree-toggle" aria-hidden="true">−</span><span>geography</span>
+                    </div>
+                    <div class="ui-node" style="left:108px;top:118px">
+                      <span class="ui-tree-toggle" aria-hidden="true">−</span><span>-ic</span>
+                    </div>
+                    <div class="ui-node" style="left:218px;top:2px"><span>geo</span></div>
+                    <div class="ui-node is-active" style="left:218px;top:50px"><span>graph</span></div>
+                    <div class="ui-node ui-node--suffix" style="left:218px;top:98px"><span>-y</span></div>
+                    <div class="ui-node" style="left:218px;top:138px">
+                      <span class="ui-tree-toggle" aria-hidden="true">−</span><span>-ic</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </article>
