@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://liuhongjiang1987.github.io/aidict/sitemap.xml
